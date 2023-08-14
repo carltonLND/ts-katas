@@ -1,6 +1,7 @@
 import fs from "fs";
 
 type ArrayOperation = "push" | "pop" | "unshift" | "shift";
+
 interface TimeExecution {
   operation: ArrayOperation;
   length: number;
@@ -8,14 +9,28 @@ interface TimeExecution {
   times: number;
 }
 
+type GroupedTimeExecution = {
+  [op in ArrayOperation]: Omit<TimeExecution, "operation">[];
+};
+
 const LENGTHS = [
   10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000,
 ];
 
+const data = [
+  ...testArrOperation("push", 100),
+  ...testArrOperation("pop", 100),
+  ...testArrOperation("unshift", 100),
+  ...testArrOperation("shift", 100),
+];
+
+writeJson(data);
+writeCsv(data);
+
 function createArray(length: number): number[] {
   const arr = [];
   for (let i = 0; i < length; i++) {
-    arr.push(i);
+    arr.push(1);
   }
 
   return arr;
@@ -55,35 +70,25 @@ function testArrOperation(
   return results;
 }
 
-function writeJson() {
-  const data = {
-    push: testArrOperation("push", 100),
-    pop: testArrOperation("pop", 100),
-    unshift: testArrOperation("unshift", 100),
-    shift: testArrOperation("shift", 100),
-  };
+function writeJson(data: TimeExecution[]) {
+  const groupedData = data.reduce(
+    (obj: GroupedTimeExecution, result) => {
+      const { operation, ...newResult } = result;
+      obj[operation].push(newResult);
+      return obj;
+    },
+    { push: [], pop: [], shift: [], unshift: [] }
+  );
 
-  const jsonData = JSON.stringify(data);
-
+  const jsonData = JSON.stringify(groupedData);
   fs.writeFileSync("arrayTimeData.json", jsonData);
 }
 
-function writeCsv() {
-  const data = [
-    ...testArrOperation("push", 100),
-    ...testArrOperation("pop", 100),
-    ...testArrOperation("unshift", 100),
-    ...testArrOperation("shift", 100),
-  ];
+function writeCsv(data: TimeExecution[]) {
   const headers = ["operation", "length", "averageTime", "times"];
-  const csvData = [
-    headers,
-    ...data.map((row) => Object.values(row) as (string | number)[]),
-  ]
+  const csvData = [headers, ...data.map(Object.values)]
     .map((row) => row.join(","))
     .join("\n");
 
   fs.writeFileSync("arrayTimeData.csv", csvData);
 }
-
-writeCsv();
